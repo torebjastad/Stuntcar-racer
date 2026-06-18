@@ -22,6 +22,8 @@ const UI = (() => {
   function show(screen, data) {
     menuEl.classList.remove('hidden');
     menuEl.innerHTML = '';
+    const ctrlEl = document.getElementById('controls');
+    if (ctrlEl) ctrlEl.style.display = 'none';
 
     switch (screen) {
       case 'title':   renderTitle(data);   break;
@@ -35,6 +37,8 @@ const UI = (() => {
 
   function hide() {
     menuEl.classList.add('hidden');
+    const ctrlEl = document.getElementById('controls');
+    if (ctrlEl) ctrlEl.style.display = 'flex';
   }
 
   // ---- TITLE SCREEN ----

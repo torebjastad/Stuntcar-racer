@@ -27,7 +27,7 @@ const AI = (() => {
     if (aiCar.finished || aiCar.destroyed) return;
 
     const tLen    = track.length;
-    const segIdx  = Math.floor(aiCar.trackPos % tLen);
+    const segIdx  = ((Math.floor(aiCar.trackPos) % tLen) + tLen) % tLen;
     const profile = aiState.profile;
 
     // Look ahead for obstacles (gaps, ramps)
