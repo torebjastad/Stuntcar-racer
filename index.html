@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+  <meta name="theme-color" content="#000000">
+  <title>Stunt Car Racer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Game canvas (fills entire screen) -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Touch controls overlay (visible during race) -->
+    <div id="controls">
+      <div id="ctrl-left-zone" class="ctrl-zone">
+        <button class="ctrl-btn" id="btn-left">◀</button>
+        <button class="ctrl-btn" id="btn-right">▶</button>
+      </div>
+      <div id="ctrl-right-zone" class="ctrl-zone">
+        <button class="ctrl-btn" id="btn-accel">ACCEL</button>
+        <button class="ctrl-btn" id="btn-boost">BOOST<br>🔥</button>
+        <button class="ctrl-btn" id="btn-brake">BRK</button>
+      </div>
+    </div>
+
+    <!-- Menu overlay -->
+    <div id="menu"></div>
+
+    <!-- Portrait rotation prompt -->
+    <div id="rotate-prompt">
+      <div style="font-size:48px;margin-bottom:16px;">↻</div>
+      <div>Rotate your phone<br>to landscape</div>
+    </div>
+  </div>
+
+  <!-- Game scripts (order matters) -->
+  <script src="js/config.js"></script>
+  <script src="js/tracks.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    // Bootstrap
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gameCanvas');
+
+      Renderer.init(canvas);
+      Input.init();
+      Audio.init();
+
+      // Handle resize / orientation change
+      window.addEventListener('resize', () => {
+        Renderer.resize();
+      });
+
+      // Lock to landscape on first interaction (mobile browsers require user gesture)
+      function tryLockOrientation() {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      }
+      document.addEventListener('touchstart', tryLockOrientation, { once: true });
+      document.addEventListener('click',      tryLockOrientation, { once: true });
+
+      // Start game
+      Game.init();
+      Game.start();
+    });
+  </script>
+</body>
+</html>
