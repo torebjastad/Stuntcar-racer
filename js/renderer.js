@@ -90,6 +90,7 @@ const Renderer = (() => {
     renderWorld(st);
     ctx.restore();
 
+    if (st.attract) return;
     renderCockpit(st, sx, sy);
     renderHUD(st);
   }
@@ -471,6 +472,33 @@ const Renderer = (() => {
     ctx.fillText(str, x, y);
   }
 
+  // Features (jumps, crests, lift bridges) with advised approach speed, cached per track
+  function features(trk) {
+    if (trk._feat) return trk._feat;
+    const S = CFG.SEG_LEN, sg = trk.segs, n = sg.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const s = sg[i], pv = sg[(i - 1 + n) % n];
+      if (s.gap && !pv.gap) out.push({ z: i * S, kind: 'jump', mph: pv.ai });
+      else if (s.lift && !pv.lift) out.push({ z: i * S, kind: 'bridge', mph: s.ai });
+      else if (!s.gap && !pv.gap && !s.lift && !pv.lift) {
+        const up = (pv.y2 - pv.y1) / S, dn = (s.y2 - s.y1) / S;
+        const nxt = sg[(i + 1) % n];
+        if (up > 0.04 && dn < -0.04 && !nxt.gap) out.push({ z: i * S, kind: 'crest', mph: s.ai });
+      }
+    }
+    return (trk._feat = out);
+  }
+  function nextFeature(trk, p) {
+    if (p.state !== 'ground' && p.state !== 'air') return null;
+    const zz = Track.wrap(trk, p.z);
+    let best = null;
+    for (const f of features(trk)) {
+      let d = f.z - zz; if (d < 0) d += trk.len;
+      if (d < 320 && (!best || d < best.dist)) best = { kind: f.kind, mph: f.mph, dist: d };
+    }
+    return best;
+  }
+
   function renderHUD(st) {
     const p = st.player, o = st.ai, trk = st.track;
     const fs = Math.max(12, Math.min(20, H * 0.045));
@@ -519,6 +547,18 @@ const Renderer = (() => {
     if (o) { ctx.fillStyle = '#ff4040'; ctx.fillRect(px + prog(o) * pw - 2, py - 2, 4, 7); }
     ctx.fillStyle = '#ffd23a';
     ctx.fillRect(px + prog(p) * pw - 2, py - 2, 4, 7);
+
+    // Upcoming feature advisory with speed feedback
+    const fa = nextFeature(trk, p);
+    if (fa && !st.msg) {
+      const cur = Math.max(0, p.speed) * CFG.MPH;
+      const lo = fa.kind === 'crest' ? 0 : fa.mph - (fa.mph >= 180 ? 4 : 12), hi = fa.mph + 12;
+      const col = cur < lo ? '#6ab4ff' : cur > hi ? '#ff5a4a' : '#5dff6a';
+      const arrow = cur < lo ? '  ▲' : cur > hi ? '  ▼' : '  ✓';
+      const label = fa.kind === 'crest' ? `CREST  MAX ${fa.mph}` : fa.kind === 'bridge' ? `LIFT BRIDGE  ${fa.mph}` : `JUMP  ${fa.mph} MPH`;
+      text(label + arrow, W * 0.5, y + fs * 1.25, fs * 0.8, col, 'center');
+      text(`${Math.round(fa.dist)}m`, W * 0.5, y + fs * 2.1, fs * 0.6, '#d8deea', 'center');
+    }
 
     // Centre messages
     if (st.msg) {

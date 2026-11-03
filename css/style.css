@@ -178,7 +178,7 @@ html, body {
 #menu {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.92);
+  background: radial-gradient(ellipse at center, rgba(4,8,22,0.62) 0%, rgba(2,4,12,0.86) 100%);
   display: flex;
   flex-direction: column;
   align-items: center;

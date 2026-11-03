@@ -14,6 +14,7 @@ const Game = (() => {
   let endTimer = 0, endInfo = null, pendingLeague = null;
   let flashMsg = null, flashT = 0;
   let autopilot = false, frozen = false, timeScale = 1;
+  let demo = null;   // attract-mode car behind the menus
 
   const league = { playerName: 'DRIVER', division: 4, season: 1, points: [0, 0, 0], racesPlayed: 0, seasonHoles: [] };
 
@@ -308,6 +309,20 @@ const Game = (() => {
     }
 
     const show = mode !== 'menu' && track && player;
+    if (!show && !frozen) {
+      if (!demo) {
+        const ids = Object.keys(TRACKS), trk = TRACKS[ids[Math.floor(Math.random() * ids.length)]];
+        demo = { trk, car: Physics.createCar({ z: 0 }), t: 0 };
+      }
+      const d = demo, h = Math.min(dt, 0.05);
+      for (let k = 0; k < 6; k++) { d.t += h / 6; Physics.step(d.car, AI.controls(d.car, null, d.trk, d.t, 0.9), d.trk, d.t, h / 6, null); }
+      if (d.car.wrecked || d.t > 90) demo = null;
+      else {
+        Renderer.render({ track: d.trk, player: d.car, ai: null, t: d.t, dt, attract: true });
+        requestAnimationFrame(frame);
+        return;
+      }
+    }
     Renderer.render({
       track: show ? track : null,
       player, ai, t, dt: frozen || mode === 'paused' ? 0 : dt,
