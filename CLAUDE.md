@@ -1,4 +1,33 @@
-# Stunt Car Racer — Complete Game Reference
+# Skyway Stunts — project notes
+
+This repo contains **Skyway Stunts**, an original mobile-first browser racing game on elevated stunt tracks
+(jumps over gaps, launching crests, a lift bridge, chassis damage, limited boost, a 4-division league).
+It is an original game in the genre: its name, tracks, drivers and art are its own. The research further down
+is genre background only — do not copy names, levels or presentation from any existing game.
+
+**Play:** https://torebjastad.github.io/Stuntcar-racer/ (GitHub Pages, from `main`, root folder).
+
+## Architecture (plain JS, no build step; script order in `index.html` matters)
+| File | Role |
+|---|---|
+| `js/config.js` | All tunables in metres/seconds (`CFG`) |
+| `js/tracks.js` | `TrackBuilder` DSL, `Track` queries (`ground`, `segHeights`, `liftAngle`), the 8 tracks, `DIVISION_TRACKS` |
+| `js/physics.js` | Car state machine ground/air/falling/respawn/wrecked, landing impacts, crack + holes, car contact. Pure (no DOM) |
+| `js/ai.js` | AI driver: per-segment target mph with braking look-ahead, lane keeping, lift-bridge timing. Pure |
+| `js/renderer.js` | Pseudo-3D painter (far→near): deck, slab walls, pillars, scenery, opponent, cockpit, HUD, adaptive quality |
+| `js/game.js` | Loop (fixed 120 Hz steps), countdown/pause, league & seasons, save (`localStorage` `skyway_save_v2`), `Game._debug` hooks |
+| `js/input.js` | Keyboard + multi-touch (hit-tested per move) |
+| `js/ui.js`, `js/audio.js` | DOM menu screens; synthesized Web Audio |
+
+## Evaluation tools (use them after every gameplay or visual change)
+- `node tools/sim.js [ids] [--race] [--features] [--bots]` — headless physics: AI lap times/damage, per-jump speed windows.
+- `node tools/shots.js --out DIR --track ID [--race] [--at z1,z2] [--drive SECS --every N] [--menus]` — Playwright screenshots
+  (frozen at track positions, or while autopilot drives). Reports page errors.
+- Debug hooks: `Game._debug.start(id, practice)`, `.go()`, `.autopilot = true`, `.timeScale = 8`, `.frozen`, `.place('player', z, {...})`, `.info`.
+
+---
+
+# Background research: Stunt Car Racer (1989) — genre reference
 
 > Amiga version (1989) by Geoff Crammond / MicroStyle  
 > Research compiled from: Wikipedia, StrategyWiki, C64-Wiki, Lemon Amiga, Amiga Magazine Rack, How To Retro, Highway Forever, Amiga Reviews, TopGear, GamesNostalgia, and the original game manual.

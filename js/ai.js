@@ -1,93 +1,77 @@
 'use strict';
 
-// AI driver: simple look-ahead speed control + rubber banding
+// AI driver: returns an input object for Physics.step. Pure (no DOM).
+// Speed plan: each segment carries a target mph (seg.ai). The AI looks ahead
+// and brakes early enough to meet lower targets. Targets ≥ 180 mph are
+// "must hit" jump speeds and are not scaled down by skill.
 const AI = (() => {
+  const C = CFG;
+  const PLAN_DECEL = 14;   // braking used when planning (m/s²)
+  const LOOK = 70;         // segments of lookahead (350 m)
 
-  // Per-track recommended speeds (index into track, mph target)
-  // Falls back to a default curve-aware speed if not specified
-  const TRACK_PROFILES = {
-    littleRamp:     { defaultSpeed: 160, humpSpeed: 130, rampBoostAt: 140 },
-    humpBack:       { defaultSpeed: 120, humpSpeed: 110 },
-    steppingStones: { defaultSpeed: 155, gapSpeed: 155 },
-    bigRamp:        { defaultSpeed: 170, bigRampBoostAt: 190 },
-    highJump:       { defaultSpeed: 200, jumpBoostAt: 180 },
-    rollercoaster:  { defaultSpeed: 150, crestMaxSpeed: 155 },
-    drawbridge:     { defaultSpeed: 145, bridgeSpeed: 140 },
-    skiJump:        { defaultSpeed: 190, jumpBoostAt: 185 },
-  };
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
-  function createAI(trackId) {
-    return {
-      profile: TRACK_PROFILES[trackId] || { defaultSpeed: 160 },
-      boostUsed: 0,
-    };
-  }
+  function controls(car, opp, trk, t, skill) {
+    skill = skill || 1;
+    const S = C.SEG_LEN, n = trk.segs.length;
+    const zz = Track.wrap(trk, car.z);
+    const i0 = Math.floor(zz / S);
+    const into = zz - i0 * S;
+    const sp = Math.max(0, car.speed);
 
-  function update(aiCar, playerCar, track, aiState, dt) {
-    if (aiCar.finished || aiCar.destroyed) return;
+    let target = Infinity, critical = false, liftAt = -1, featureNear = false;
+    for (let k = 0; k < LOOK; k++) {
+      const seg = trk.segs[(i0 + k) % n];
+      const d = Math.max(0, k * S - into);
+      const v = seg.ai / C.MPH;
+      const allowed = Math.sqrt(v * v + 2 * PLAN_DECEL * d);
+      if (allowed < target) { target = allowed; critical = seg.ai >= 180; }
+      if (seg.lift && liftAt < 0) liftAt = d;
+      if ((seg.gap || seg.ai >= 180) && d < 90) featureNear = true;
+    }
+    if (!critical) target *= skill;
 
-    const tLen    = track.length;
-    const segIdx  = ((Math.floor(aiCar.trackPos) % tLen) + tLen) % tLen;
-    const profile = aiState.profile;
-
-    // Look ahead for obstacles (gaps, ramps)
-    let lookAheadPitch = 0;
-    let hasGapAhead    = false;
-    let hasDrawAhead   = false;
-    for (let i = 0; i < 15; i++) {
-      const s = track[(segIdx + i) % tLen];
-      lookAheadPitch += s.pitch;
-      if (s.noRoad) hasGapAhead = true;
-      if (s.isDraw) hasDrawAhead = true;
+    // Mild rubber band so races stay close
+    if (opp && !critical) {
+      const L = trk.len;
+      const lead = (car.z - car.startZ) - (opp.z - opp.startZ);
+      if (lead < -60) target *= 1.04;
+      else if (lead > 80) target *= 0.97;
     }
 
-    // Target speed (mph → world units/s)
-    let targetMph = profile.defaultSpeed;
-
-    // Slow for downhill (avoid overshoot)
-    if (lookAheadPitch < -5) targetMph *= 0.85;
-
-    // Boost approaching a big ramp or jump
-    const needsBoost = (hasGapAhead || lookAheadPitch > 8) &&
-                       aiCar.speed * CFG.MPH_SCALE < (profile.jumpBoostAt || profile.bigRampBoostAt || 190);
-
-    // Bridge: time carefully
-    if (hasDrawAhead) {
-      targetMph = Math.min(targetMph, (profile.bridgeSpeed || 140));
+    // Lift bridge: wait for it to be (and stay) down while we cross
+    if (liftAt >= 0 && liftAt < 170) {
+      const tArr = liftAt / Math.max(sp, 18);
+      const a = Math.max(Track.liftAngle(t + tArr), Track.liftAngle(t + tArr + 0.9));
+      if (a > 0.06) target = Math.min(target, Math.sqrt(2 * PLAN_DECEL * Math.max(0, liftAt - 15)));
     }
 
-    const targetSpeed = targetMph / CFG.MPH_SCALE;
+    const inp = { accel: false, brake: false, boost: false, steer: 0 };
+    if (car.state === 'ground') {
+      if (sp < target - 0.5) inp.accel = true;
+      if (sp > target + 2.5) inp.brake = true;
+      if (target > C.VMAX * car.power * 0.97 && sp < target - 1 && car.boost > 0) inp.boost = true;
+    }
 
-    // Rubber-band to keep race close
-    const gap = aiCar.trackPos - playerCar.trackPos;
-    let rubberFactor = 1;
-    if (gap < -10) rubberFactor = 1 + CFG.AI_RUBBER_BAND;       // AI behind → faster
-    if (gap > 15)  rubberFactor = 1 - CFG.AI_RUBBER_BAND * 0.5; // AI ahead → slightly slower
+    // Steering: hold a lane, overtake slower cars, centre up for jumps
+    let lane = car.lane !== undefined ? car.lane : 0;
+    if (opp && (opp.state === 'ground' || opp.state === 'air')) {
+      const L = trk.len;
+      const dz = ((opp.z - car.z) % L + L * 1.5) % L - L / 2;
+      if (dz > 0 && dz < 35 && sp > opp.speed + 0.5 && Math.abs(opp.x - lane) < 2.8) {
+        lane = opp.x > 0 ? opp.x - 3.2 : opp.x + 3.2;
+      }
+    }
+    if (featureNear) lane *= 0.3;
+    lane = clamp(lane, -C.ROAD_W + 1.6, C.ROAD_W - 1.6);
 
-    const adjustedTarget = targetSpeed * CFG.AI_SPEED_FACTOR * rubberFactor;
-
-    // Throttle / brake decision
-    const inp = {
-      accel: aiCar.speed < adjustedTarget,
-      brake: aiCar.speed > adjustedTarget * 1.08,
-      boost: needsBoost && aiCar.boost > 5,
-      left:  false,
-      right: false,
-    };
-
-    // Steering: return to lane centre + avoid edges
-    const seg = track[segIdx];
-    const steerCorrect = -aiCar.laneOffset * 0.7;
-    const steerCurve   = -seg.curve * 3;  // counter the curve centrifugal
-    const totalSteer   = Math.max(-1, Math.min(1, steerCorrect + steerCurve));
-
-    if (totalSteer < -0.1) inp.left  = true;
-    if (totalSteer > 0.1)  inp.right = true;
-    if (Math.abs(totalSteer) <= 0.1) { inp.left = false; inp.right = false; }
-
-    // Run same physics as player
-    Physics.update(aiCar, inp, track, dt);
+    const seg = trk.segs[i0];
+    const drift = -seg.curve * sp * sp * C.CENTRIFUGAL;
+    const want = clamp((lane - car.x) * 1.3, -5, 5);
+    const k = (C.STEER_BASE + sp * C.STEER_K) * Math.min(1, sp / 6);
+    inp.steer = k > 0.1 ? clamp((want - drift) / k, -1, 1) : 0;
+    return inp;
   }
 
-  return { createAI, update };
+  return { controls };
 })();
