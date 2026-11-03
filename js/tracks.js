@@ -134,82 +134,124 @@ const Track = (() => {
 const TRACKS = {};
 function defTrack(id, meta, fn) { TRACKS[id] = fn(TrackBuilder()).build(Object.assign({ id }, meta)); }
 
+// Sharp crest: parabolic rise then parabolic drop. The kink at the apex is what
+// launches the car; landing impact is roughly speed x kink, so a crest with
+// kink k is "clean" up to about 8.2 / k m/s.
+function crest(b, base, H, nUp, nDn) { return b.ramp(nUp, base + H).land(nDn, base); }
+
+// A kicker ramp, a gap, and a landing slope down to `toH`.
+//   B: approach height, n1/H1: ramp length (segs) and rise, g: gap (segs),
+//   hLand: surface height just past the gap, nl: landing length (segs)
+function jump(b, B, n1, H1, g, hLand, nl, toH) {
+  return b.ramp(n1, B + H1).gap(g).at(hLand).land(nl, toH);
+}
+
+// A row of short platforms, each with a small kicker and a gap after it.
+function islands(b, base, k) {
+  for (let i = 0; i < k; i++) b.flat(2).ramp(3, base + 0.6).gap(6).at(base);
+  return b;
+}
+
+// Hops: a row of bare 10 m kickers over 25 m gaps (no platform in between), so
+// being too slow drops short and being too fast lands in the next gap.
+function hops(b, base, k) {
+  for (let i = 0; i < k; i++) b.ramp(2, base + 0.4).gap(5).at(base);
+  return b;
+}
+
 // ---- Division 4 ----
-defTrack('kicker', { name: 'Kicker Loop', div: 4, hint: 'One hump, one jump. Hit the kicker fast enough to clear the gap.' }, b => b
-  .ai(165).flat(30).flat(22, 0.10).flat(18)
-  .ai(140).hill(16, 5).hill(16, 0)
-  .ai(160).flat(26, -0.10).flat(20)
-  .ai(170).ramp(18, 5).gap(5).at(3).land(14, 0)
-  .ai(160).flat(30, 0.12).flat(30).flat(26, -0.08).flat(24)
-);
-
-defTrack('camel', { name: 'Camel Hills', div: 4, hint: 'Rolling humps. Too fast over the big crests and you fly — and land hard.' }, b => b
-  .ai(165).flat(30)
-  .ai(150).hill(14, 4).hill(14, 0).flat(15)
-  .ai(125).hill(18, 8).hill(18, 0)
-  .ai(160).flat(25, 0.12).flat(20)
-  .ai(150).hill(14, 4).hill(14, 0)
-  .ai(160).flat(15, -0.10).flat(30)
-  .ai(120).hill(20, 10).hill(20, 0)
-  .ai(165).flat(30, 0.10).flat(30)
-);
-
-// ---- Division 3 ----
-defTrack('islands', { name: 'Island Hop', div: 3, hint: 'Short platforms with gaps. Find one steady speed and hold it.' }, b => {
-  b.ai(160).flat(30).flat(20, 0.10).flat(15).ai(140);
-  for (let k = 0; k < 5; k++) b.flat(5).ramp(3, 0.8).gap(3).at(0);
-  b.ai(160).flat(25, -0.12).flat(25).flat(20, 0.10).flat(20);
-  b.ai(140);
-  for (let k = 0; k < 4; k++) b.flat(5).ramp(3, 0.8).gap(3).at(0);
-  return b.ai(160).flat(25, -0.08).flat(25);
+defTrack('kicker', { name: 'Kicker Loop', div: 4, hint: 'A small hump, then one kicker over a gap. Roughly 120-170 mph clears it.' }, b => {
+  b.ai(165).flat(26).flat(18, 0.10).flat(8);
+  b.ai(140); crest(b, 0, 2.4, 16, 16);
+  b.ai(160).flat(10).flat(20, -0.10).flat(10);
+  b.ai(150).hill(16, 7).flat(14);
+  jump(b, 7, 10, 1.5, 6, 8.0, 30, 0);
+  b.ai(160).flat(22, 0.12).flat(8);
+  b.ai(140); crest(b, 0, 2.4, 16, 16);
+  return b.ai(160).flat(16, -0.08).flat(20);
 });
 
-defTrack('longramp', { name: 'Long Ramp', div: 3, hint: 'Two small kickers, then the big one. Commit to full boost for the long gap.' }, b => b
-  .ai(165).flat(25)
-  .ai(165).ramp(10, 2.5).gap(4).at(1.5).land(8, 0).flat(14)
-  .ai(175).ramp(10, 3).gap(5).at(1.5).land(8, 0)
-  .ai(175).flat(20, 0.10).flat(20)
-  .ai(230).flat(30).ramp(24, 10).gap(12).at(6).land(20, 0)
-  .ai(160).flat(25, -0.12).flat(30).flat(25, 0.10).flat(20)
-);
+defTrack('camel', { name: 'Camel Hills', div: 4, hint: 'Rolling humps. Ease off over the sharp crest or you fly and land hard.' }, b => {
+  b.ai(165).flat(26);
+  b.ai(150).hill(14, 4).hill(14, 0).flat(8);
+  b.ai(160).flat(20, 0.12).flat(10);
+  b.ai(135).hill(14, 5); crest(b, 5, 2.0, 14, 14); b.hill(14, 0);
+  b.ai(160).flat(10).flat(20, -0.10).flat(6);
+  b.ai(150).hill(20, 13).hill(20, 0);
+  return b.ai(165).flat(20, 0.10).flat(26);
+});
+
+// ---- Division 3 ----
+defTrack('islands', { name: 'Island Hop', div: 3, hint: 'Short platforms with gaps. Too slow drops short, too fast overshoots: hold about 130 mph.' }, b => {
+  b.ai(160).flat(20).flat(16, 0.10).flat(6);
+  b.ai(150).hill(16, 12).flat(8);
+  b.ai(135); islands(b, 12, 5);
+  b.ai(150).flat(10).hill(16, 0);
+  b.ai(160).flat(18, -0.12).flat(14, 0.10).flat(8);
+  b.ai(135); islands(b, 0, 4);
+  return b.ai(160).flat(12).flat(18, -0.08).flat(14);
+});
+
+defTrack('longramp', { name: 'Long Ramp', div: 3, hint: 'Three quick hops, a kicker, then the long one. No boost needed, but you must carry speed.' }, b => {
+  b.ai(165).flat(16).flat(16, 0.10).flat(6);
+  b.ai(140).hill(12, 4).flat(6);
+  b.ai(125); hops(b, 4, 3);
+  b.ai(150).flat(8).hill(14, 0);
+  b.ai(160).flat(14, -0.14).flat(6);
+  b.ai(145).hill(12, 6).flat(6);
+  jump(b, 6, 10, 1.9, 7, 7.6, 26, 0);
+  b.ai(170).hill(14, 10, 0.10).flat(44);
+  jump(b, 10, 10, 1.25, 8, 10.5, 50, 0);
+  return b.ai(160).flat(14, -0.10).flat(16);
+});
 
 // ---- Division 2 ----
-defTrack('canyon', { name: 'The Canyon', div: 2, hint: 'One huge chasm. You need 200+ mph at the lip — boost from the last bend.' }, b => b
-  .ai(170).flat(25).flat(25, 0.12).flat(20)
-  .ai(235).flat(40).ramp(16, 6).gap(20).at(2).land(18, 0)
-  .ai(160).flat(25, -0.14).flat(25).flat(20, 0.10)
-  .ai(150).hill(16, 6).hill(16, 0)
-  .ai(165).flat(30, -0.08).flat(30)
-);
+defTrack('canyon', { name: 'The Canyon', div: 2, hint: 'One huge chasm. You need 200+ mph at the lip: boost down the long straight.' }, b => {
+  b.ai(165).flat(10).flat(16, 0.12).flat(4);
+  b.ai(130).hill(14, 6); crest(b, 6, 2.0, 12, 12); b.hill(12, 0);
+  b.ai(160).flat(12, -0.14).flat(4);
+  b.ai(170).hill(18, 15);
+  b.ai(180).flat(28).ai(208).flat(40);
+  jump(b, 15, 10, 0.75, 9, 15.65, 60, 0);
+  b.ai(160).flat(14, 0.12).flat(6);
+  b.ai(130).hill(12, 5); crest(b, 5, 2.0, 12, 12); b.hill(12, 0);
+  return b.ai(165).flat(12, -0.10).flat(4);
+});
 
-defTrack('switchback', { name: 'Switchback', div: 2, hint: 'A rollercoaster of crests and bends. Ease off over the big hill.' }, b => b
-  .ai(160).flat(20)
-  .ai(140).hill(14, 6).hill(14, 0, 0.12)
-  .ai(120).hill(22, 14).hill(22, 2, -0.10)
-  .ai(140).hill(14, 8).hill(14, 0, 0.12)
-  .ai(160).flat(25, -0.14).flat(20)
-  .ai(135).hill(16, 7).hill(16, 0)
-  .ai(140).hill(12, 5, 0.10).hill(12, 0)
-  .ai(165).flat(30, -0.10).flat(30)
-);
+defTrack('switchback', { name: 'Switchback', div: 2, hint: 'A rollercoaster of sharp crests and bends, then a broken stretch of three hops. Ease off over each crest.' }, b => {
+  b.ai(160).flat(16);
+  b.ai(130).hill(12, 6); crest(b, 6, 2.2, 14, 14); b.hill(12, 0, 0.12);
+  b.ai(125).hill(20, 20); crest(b, 20, 2.4, 16, 16); b.hill(20, 2, -0.10);
+  b.ai(130).hill(12, 8); crest(b, 8, 2.2, 14, 14); b.hill(12, 0, 0.12);
+  b.ai(160).flat(20, -0.14).flat(10);
+  b.ai(150).flat(10).ai(125); hops(b, 0, 3);
+  b.ai(160).flat(10);
+  return b.ai(165).flat(18, -0.10).flat(16);
+});
 
 // ---- Division 1 ----
-defTrack('liftbridge', { name: 'Lift Bridge', div: 1, hint: 'The bridge rises and falls. Time your run — a raised leaf is a launch ramp.' }, b => b
-  .ai(165).flat(30).flat(25, 0.12).flat(20)
-  .ai(140).flat(20).lift(10).flat(15)
-  .ai(155).hill(16, 6).hill(16, 0)
-  .ai(160).flat(25, -0.14).flat(25)
-  .ai(140).flat(20).lift(10).flat(15)
-  .ai(165).flat(25, 0.10).flat(30)
-);
+defTrack('liftbridge', { name: 'Lift Bridge', div: 1, hint: 'A lift bridge rises and falls. Cross while it is down: a raised leaf is a wall.' }, b => {
+  b.ai(165).flat(26).flat(18, 0.12).flat(8);
+  b.ai(160).flat(14, -0.14).flat(6);
+  b.ai(140).flat(34).lift(12).flat(14);
+  b.ai(130).hill(12, 8); crest(b, 8, 2.2, 14, 14); b.hill(12, 0);
+  b.ai(160).flat(16, 0.10).flat(10);
+  b.ai(130).hill(12, 6); crest(b, 6, 2.2, 14, 14); b.hill(10, 0);
+  b.ai(140).hill(18, 13).hill(18, 0);
+  return b.ai(165).flat(12, -0.10).flat(4);
+});
 
-defTrack('launchpad', { name: 'Launch Pad', div: 1, hint: 'The giant jump. Over 200 mph or you will not make the landing.' }, b => b
-  .ai(170).flat(25).flat(25, -0.12).flat(20)
-  .ai(240).flat(45).ramp(26, 14).gap(18).at(9).land(30, 0)
-  .ai(160).flat(25, 0.14).flat(25)
-  .ai(150).hill(14, 5).hill(14, 0)
-  .ai(165).flat(25, -0.10).flat(30)
-);
+defTrack('launchpad', { name: 'Launch Pad', div: 1, hint: 'The giant jump. Boost past 200 mph down the straight or you will not reach the landing.' }, b => {
+  b.ai(170).flat(8).flat(14, -0.12).flat(4);
+  b.ai(130).hill(14, 8); crest(b, 8, 2.2, 14, 14); b.hill(12, 0);
+  b.ai(160).flat(12, 0.14).flat(4);
+  b.ai(175).hill(20, 22);
+  b.ai(180).flat(28).ai(208).flat(40);
+  jump(b, 22, 16, 2.8, 7, 26.7, 60, 0);
+  b.ai(160).flat(12, 0.14).flat(4);
+  b.ai(130).hill(12, 6); crest(b, 6, 2.2, 14, 14); b.hill(10, 0);
+  return b.ai(165).flat(8, -0.10).flat(4);
+});
 
 const DIVISION_TRACKS = {
   4: ['kicker', 'camel'],
