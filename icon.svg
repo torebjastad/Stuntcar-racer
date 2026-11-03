@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#05070d"/>
+  <!-- sky horizon glow -->
+  <rect x="0" y="300" width="512" height="90" fill="#1b1030"/>
+  <!-- ground -->
+  <rect x="0" y="430" width="512" height="82" fill="#16161c"/>
+  <!-- support pillars -->
+  <g stroke="#ff6a00" stroke-width="10" stroke-linecap="round">
+    <path d="M150 300 L150 438"/>
+    <path d="M262 262 L262 442"/>
+    <path d="M374 226 L374 444"/>
+  </g>
+  <!-- elevated deck rising into a ramp -->
+  <path d="M40 318 L300 262 L372 206 L400 214 L430 178 L470 200 L330 300 L56 360 Z" fill="#ffcc00"/>
+  <!-- deck edge highlight -->
+  <path d="M56 360 L330 300 L470 200 L470 208 L330 310 L56 370 Z" fill="#ff6a00"/>
+  <!-- ramp lip -->
+  <path d="M430 178 L470 200 L458 150 Z" fill="#fff3b0"/>
+</svg>

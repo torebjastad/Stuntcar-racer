@@ -36,10 +36,15 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 28%;
+  height: 25%;
   display: flex;
   align-items: center;
   pointer-events: none;
+  /* keep buttons clear of notches / rounded corners in landscape */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 5;
 }
 
 .ctrl-zone {
@@ -50,7 +55,8 @@ html, body {
 }
 
 #ctrl-left-zone {
-  flex: 1;
+  width: 40%;
+  flex: none;
   height: 100%;
   display: flex;
   gap: 8px;
@@ -70,10 +76,11 @@ html, body {
 
 .ctrl-btn {
   pointer-events: all;
-  border: 2px solid rgba(255,255,255,0.4);
-  border-radius: 10px;
-  background: rgba(0,0,0,0.5);
-  color: rgba(255,255,255,0.8);
+  border: 2px solid rgba(255,255,255,0.32);
+  border-radius: 12px;
+  background: rgba(0,0,0,0.16);
+  color: rgba(255,255,255,0.75);
+  text-shadow: 0 1px 2px #000;
   font-family: 'Courier New', monospace;
   font-weight: bold;
   display: flex;
@@ -85,8 +92,8 @@ html, body {
 }
 
 .ctrl-btn.active {
-  background: rgba(255,255,255,0.25);
-  border-color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.85);
 }
 
 #btn-left, #btn-right {
@@ -99,8 +106,8 @@ html, body {
   width: 45%;
   height: 100%;
   font-size: clamp(12px, 3vw, 18px);
-  background: rgba(0,80,0,0.5);
-  border-color: rgba(0,255,0,0.5);
+  background: rgba(0,90,0,0.18);
+  border-color: rgba(90,255,90,0.45);
   flex-shrink: 0;
 }
 
@@ -112,8 +119,8 @@ html, body {
   width: 28%;
   height: 75%;
   font-size: clamp(10px, 2.5vw, 15px);
-  background: rgba(80,40,0,0.5);
-  border-color: rgba(255,150,0,0.5);
+  background: rgba(90,45,0,0.18);
+  border-color: rgba(255,150,0,0.45);
   color: rgba(255,150,0,0.9);
   flex-shrink: 0;
 }
@@ -127,8 +134,8 @@ html, body {
   width: 22%;
   height: 60%;
   font-size: clamp(9px, 2vw, 13px);
-  background: rgba(80,0,0,0.5);
-  border-color: rgba(255,60,60,0.4);
+  background: rgba(90,0,0,0.18);
+  border-color: rgba(255,80,80,0.4);
   color: rgba(255,100,100,0.9);
   flex-shrink: 0;
 }
@@ -137,7 +144,37 @@ html, body {
   background: rgba(180,0,0,0.5);
 }
 
-/* Menu overlay */
+/* Pause button (shown during a race only; JS toggles display) */
+#btn-pause {
+  position: absolute;
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  width: 40px;
+  height: 40px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.75);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: -1px;
+  opacity: 0.8;
+  z-index: 6;
+  pointer-events: all;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+}
+
+#btn-pause:active {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Menu overlay: scrolls when content is taller than the screen (e.g. 844x390 landscape) */
 #menu {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -145,29 +182,55 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   color: #fff;
   pointer-events: all;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 8px calc(12px + env(safe-area-inset-right, 0px)) 8px calc(12px + env(safe-area-inset-left, 0px));
+  z-index: 10;
+}
+
+#menu, #menu * {
+  touch-action: pan-y;   /* allow vertical scrolling of the overlay */
 }
 
 #menu.hidden {
   display: none;
 }
 
+/* margin:auto centres the section vertically without clipping its top when it overflows */
+.menu-section {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 560px;
+  padding: 0 4px;
+}
+
 .menu-title {
-  font-size: clamp(22px, 6vw, 48px);
+  font-size: clamp(20px, min(6vw, 11vh), 48px);
   font-weight: bold;
   color: #ffcc00;
   text-shadow: 0 0 20px #ff6600;
   letter-spacing: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-align: center;
 }
 
+.menu-title-sm {
+  font-size: clamp(16px, min(4.5vw, 8vh), 30px);
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+
 .menu-subtitle {
-  font-size: clamp(10px, 2.5vw, 16px);
+  font-size: clamp(10px, min(2.5vw, 4.5vh), 16px);
   color: #888;
-  margin-bottom: 28px;
+  margin-bottom: 10px;
   text-align: center;
 }
 
@@ -177,15 +240,16 @@ html, body {
   border: 2px solid rgba(255,255,255,0.3);
   color: #fff;
   font-family: 'Courier New', monospace;
-  font-size: clamp(13px, 3.5vw, 20px);
-  padding: 12px 30px;
-  margin: 6px;
+  font-size: clamp(12px, min(3.2vw, 5.5vh), 20px);
+  padding: 8px 20px;
+  margin: 4px;
   border-radius: 6px;
   cursor: pointer;
-  min-width: 220px;
+  min-width: 180px;
   text-align: center;
   letter-spacing: 1px;
   transition: background 0.1s, border-color 0.1s;
+  -webkit-touch-callout: none;
 }
 
 .menu-btn:active, .menu-btn.selected {
@@ -194,46 +258,163 @@ html, body {
   color: #ffcc00;
 }
 
-.menu-info {
-  font-size: clamp(10px, 2.5vw, 14px);
-  color: #aaa;
-  text-align: center;
-  margin: 4px 0;
+.menu-btn-alt {
+  font-size: clamp(10px, min(2.5vw, 4.5vh), 14px);
+  border-color: rgba(255,255,255,0.18);
+  color: #bbb;
 }
 
-.menu-section {
+.menu-info {
+  font-size: clamp(10px, min(2.4vw, 4vh), 14px);
+  color: #aaa;
+  text-align: center;
+  margin: 3px 0;
+}
+
+.menu-info-dim {
+  color: #666;
+  font-size: clamp(9px, min(2vw, 3.5vh), 12px);
+}
+
+/* Action button rows: side by side on wide screens, wrap otherwise */
+.menu-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 400px;
-  padding: 0 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.menu-actions .menu-btn {
+  margin: 0;
+  min-width: 150px;
 }
 
 /* League table */
 .league-table {
   width: 100%;
-  max-width: 340px;
-  margin: 12px 0;
+  max-width: 360px;
+  margin: 6px 0;
   border-collapse: collapse;
-  font-size: clamp(11px, 2.8vw, 15px);
+  font-size: clamp(11px, min(2.8vw, 4.5vh), 15px);
 }
 
 .league-table th {
   color: #ffcc00;
-  padding: 4px 8px;
+  padding: 2px 8px;
   border-bottom: 1px solid #444;
   text-align: left;
 }
 
 .league-table td {
-  padding: 4px 8px;
+  padding: 2px 8px;
   color: #ccc;
 }
 
 .league-table tr.player-row td {
   color: #ffcc00;
   font-weight: bold;
+}
+
+.result-table {
+  max-width: 420px;
+}
+
+.result-table th:not(:first-child),
+.result-table td:not(:first-child) {
+  text-align: right;
+}
+
+.banner {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  padding: 4px 8px;
+  margin: 4px 0;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: clamp(11px, min(2.8vw, 4.5vh), 15px);
+}
+
+.banner-up { border-color: #44ff44; color: #44ff44; }
+.banner-down { border-color: #ff4444; color: #ff4444; }
+
+.up { color: #44ff44; }
+.down { color: #ff4444; }
+
+/* Name entry */
+.name-input {
+  background: #111;
+  color: #fff;
+  border: 2px solid #555;
+  padding: 8px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  width: 200px;
+  text-align: center;
+  border-radius: 4px;
+  margin: 6px 0;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: manipulation;
+}
+
+/* Practice track picker */
+.track-list {
+  width: 100%;
+  max-height: 56vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 4px;
+  margin-top: 4px;
+}
+
+.track-group {
+  margin-bottom: 6px;
+}
+
+.track-group-label {
+  font-size: clamp(9px, min(2.2vw, 3.5vh), 12px);
+  color: #ffcc00;
+  letter-spacing: 2px;
+  text-align: left;
+  padding: 2px 4px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 4px;
+}
+
+.track-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.track-btn {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.track-hint {
+  max-width: 420px;
+  margin: 6px 0 4px;
+}
+
+@media (min-width: 560px) {
+  .track-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Very short landscape screens: tighten vertical spacing further */
+@media (max-height: 420px) {
+  .menu-subtitle { margin-bottom: 6px; }
+  .menu-actions { margin-top: 4px; }
+  .league-table { margin: 4px 0; }
 }
 
 /* Damage bar (outside canvas for menu screens) */
