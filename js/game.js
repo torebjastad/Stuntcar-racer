@@ -230,6 +230,7 @@ const Game = (() => {
       scoreRace(endInfo.winner === 'player', forfeit);
       league.seasonHoles = player.holes.slice();
       league.racesPlayed++;
+      res.league = JSON.parse(JSON.stringify(league));   // snapshot before any season reset
       if (league.racesPlayed >= 4) pendingLeague = endSeason();
       save();
     }
@@ -254,6 +255,7 @@ const Game = (() => {
 
   function endSeason() {
     const pts = league.points.slice();
+    const snapshot = JSON.parse(JSON.stringify(league));
     const order = [0, 1, 2].sort((a, b) => (pts[b] - pts[a]) || (a === 0 ? -1 : b === 0 ? 1 : 0));
     const rank = order.indexOf(0);
     const oldDivision = league.division;
@@ -269,7 +271,7 @@ const Game = (() => {
     league.points = [0, 0, 0];
     league.racesPlayed = 0;
     if (league.division === 4) league.seasonHoles = [];   // Division 4 repairs the car
-    return { league, finalPoints: pts, oldDivision, promoted, relegated };
+    return { league: snapshot, finalPoints: pts, oldDivision, promoted, relegated };
   }
 
   // ---- Main loop -------------------------------------------------------------

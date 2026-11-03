@@ -233,6 +233,7 @@ const UI = (() => {
     let reason = '';
     if (data.reason === 'wrecked') reason = 'Your car was wrecked';
     else if (data.reason === 'opponentWrecked') reason = "Opponent's car was wrecked";
+    else if (data.reason === 'forfeit') reason = 'You quit the race (forfeit)';
     else if (data.reason === 'finished') {
       if (practice) reason = 'Three laps completed';
       else if (winner === 'player') reason = 'You crossed the line first';
@@ -259,12 +260,12 @@ const UI = (() => {
           <td>${fmtTime(bestP)}</td>
           <td>${fmtTime(sumTimes(playerTimes))}</td>
         </tr>
-        <tr>
-          <td>${esc(data.opponentName || 'AI Driver')}</td>
+        ${practice ? '' : `<tr>
+          <td>${esc(data.opponentName || 'Rival')}</td>
           <td>${aiTimes.length}</td>
           <td>${fmtTime(bestA)}</td>
           <td>${fmtTime(sumTimes(aiTimes))}</td>
-        </tr>
+        </tr>`}
       </table>
       ${pointsLine}
       <button class="menu-btn" id="btn-continue">CONTINUE</button>
